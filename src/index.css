@@ -1,18 +1,17 @@
 @import 'tailwindcss';
 
 @theme {
-  --color-background: hsl(0 0% 94%);
-  --color-card: hsl(0 0% 100%);
-  --color-foreground: hsl(220 35% 14%);
-  --color-muted: hsl(0 0% 90%);
-  --color-muted-foreground: hsl(0 0% 42%);
-  --color-border: hsl(0 0% 88%);
+  --color-background: #ffffff;
+  --color-card: #ffffff;
+  --color-foreground: #000000;
+  --color-muted: #ededed;
+  --color-muted-foreground: #767676;
+  --color-border: #000000;
   --color-destructive: hsl(0 84% 60%);
 
-  --font-sans: 'Pretendard Variable', system-ui, sans-serif;
-  --font-display: 'Boogaloo', sans-serif;
+  --font-sans: 'IBM Plex Mono', 'Nanum Gothic Coding', monospace;
 
-  --radius: 0.75rem;
+  --radius: 0;
 }
 
 @layer base {
