@@ -61,6 +61,8 @@ db.json (json-server, :3001) ⇄ src/api/notes.ts (fetch 래퍼) ⇄ NotesContex
 - 디자인 토큰은 `src/index.css`의 `@theme` 블록에서 CSS 변수로 정의(`--color-*`,
   `--font-*`, `--radius`). 새 색상/폰트를 추가할 때는 여기에 토큰을 추가하고 `bg-foreground`,
   `text-muted-foreground`처럼 시맨틱 클래스명으로 사용하는 기존 패턴을 따를 것.
+- 스타일/CSS/Tailwind 작업 전에 `design-system` 스킬
+  (`.claude/skills/design-system/SKILL.md`)을 먼저 참고할 것.
 
 ## 구현 패턴
 
