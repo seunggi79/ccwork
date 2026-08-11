@@ -10,16 +10,11 @@ export function Layout({ onNewNote, sidebar, main }: LayoutProps) {
   return (
     <div className="min-h-screen bg-background">
       {/* 헤더 */}
-      <header className="bg-card border-b border-border px-6 py-4 flex items-center justify-between shadow-[0_1px_4px_rgba(0,0,0,0.06)]">
-        <h1
-          className="text-2xl font-bold text-foreground"
-          style={{ fontFamily: 'Boogaloo, sans-serif' }}
-        >
-          📝 Notes
-        </h1>
+      <header className="bg-card border-b border-border px-6 py-4 flex items-center justify-between">
+        <h1 className="text-2xl font-bold text-foreground tracking-wide">NOTES</h1>
         <button
           onClick={onNewNote}
-          className="bg-foreground text-card px-4 py-2 rounded-xl text-sm font-semibold hover:opacity-75 transition-opacity cursor-pointer"
+          className="bg-foreground text-card px-4 py-2 text-sm font-semibold hover:bg-[#111] transition-colors cursor-pointer"
         >
           + 새 노트
         </button>

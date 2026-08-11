@@ -1,0 +1,17 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/check-design-system.js",
+            "timeout": 15,
+            "statusMessage": "design-system 규칙 검사 중..."
+          }
+        ]
+      }
+    ]
+  }
+}
