@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>notes-app 아키텍처</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  :root {
+    color-scheme: light;
+    --bg: #f8fafc;
+    --card: #ffffff;
+    --border: #e2e8f0;
+    --text: #0f172a;
+    --muted: #64748b;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 0 0 4rem;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Pretendard', 'Malgun Gothic', sans-serif;
+  }
+  header {
+    padding: 2.5rem 2rem 1.5rem;
+    max-width: 1080px;
+    margin: 0 auto;
+  }
+  h1 {
+    font-size: 1.75rem;
+    margin: 0 0 0.5rem;
+  }
+  header p {
+    color: var(--muted);
+    margin: 0.25rem 0;
+    line-height: 1.6;
+  }
+  main {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 0 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+  }
+  section.card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 1.5rem 1.5rem 2rem;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+  }
+  section.card h2 {
+    font-size: 1.15rem;
+    margin: 0 0 0.25rem;
+  }
+  section.card .desc {
+    color: var(--muted);
+    font-size: 0.9rem;
+    margin: 0 0 1rem;
+    line-height: 1.6;
+  }
+  .diagram-wrap {
+    overflow-x: auto;
+    padding: 0.5rem 0;
+  }
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.25rem;
+    margin-top: 1.25rem;
+    padding-top: 1rem;
+    border-top: 1px dashed var(--border);
+    font-size: 0.82rem;
+    color: var(--muted);
+  }
+  .legend span {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  .swatch {
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+    display: inline-block;
+    flex-shrink: 0;
+  }
+  footer {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 1rem 2rem;
+    color: var(--muted);
+    font-size: 0.8rem;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>📝 notes-app 아키텍처</h1>
+  <p>React 19 + TypeScript + Vite 노트 앱의 <code>src/</code> 디렉토리를 분석해 생성한 구조도입니다.</p>
+  <p>총 3개의 다이어그램: ① 컴포넌트 의존성 그래프, ② 상태 소유권/흐름, ③ 저장 동작 시퀀스.</p>
+</header>
+
+<main>
+
+  <section class="card">
+    <h2>① 컴포넌트 의존성 그래프</h2>
+    <p class="desc">
+      <code>src/</code> 하위 모든 모듈의 import 관계입니다. 실선은 렌더링(하위 컴포넌트로 사용),
+      점선은 훅을 통한 상태 구독 또는 타입 import를 의미합니다.
+    </p>
+    <div class="diagram-wrap">
+      <pre class="mermaid">
+flowchart TD
+    subgraph ENTRY["진입점"]
+        main["main.tsx"]
+    end
+
+    subgraph COMPONENTS["화면 컴포넌트"]
+        App["App.tsx"]
+        Layout["Layout"]
+        NoteList["NoteList"]
+        NoteItem["NoteItem"]
+        NoteEditor["NoteEditor"]
+    end
+
+    NotesContext[("NotesContext<br/>notes / loading / error")]
+    api["/api/notes.ts/"]
+    types["types/note.ts"]
+
+    main --> App
+    App --> Layout
+    App -- "sidebar prop" --> NoteList
+    App -- "main prop" --> NoteEditor
+    Layout -. "슬롯 렌더링" .-> NoteList
+    Layout -. "슬롯 렌더링" .-> NoteEditor
+    NoteList --> NoteItem
+    NoteList -. "useNotes()" .-> NotesContext
+    NoteEditor -. "useNotes()" .-> NotesContext
+    NotesContext --> api
+    NoteItem -. "타입" .-> types
+    NotesContext -. "타입" .-> types
+    api -. "타입" .-> types
+
+    classDef entry fill:#e0e7ff,stroke:#4338ca,color:#1e1b4b;
+    classDef comp fill:#dcfce7,stroke:#15803d,color:#052e16;
+    classDef ctx fill:#fef3c7,stroke:#b45309,color:#451a03;
+    classDef apimod fill:#fee2e2,stroke:#b91c1c,color:#450a0a;
+    classDef types fill:#f1f5f9,stroke:#64748b,color:#0f172a,stroke-dasharray: 4 3;
+
+    class main entry;
+    class App,Layout,NoteList,NoteItem,NoteEditor comp;
+    class NotesContext ctx;
+    class api apimod;
+    class types types;
+      </pre>
+    </div>
+    <div class="legend">
+      <span><span class="swatch" style="background:#e0e7ff;border:1px solid #4338ca;"></span>진입점</span>
+      <span><span class="swatch" style="background:#dcfce7;border:1px solid #15803d;"></span>화면 컴포넌트</span>
+      <span><span class="swatch" style="background:#fef3c7;border:1px solid #b45309;"></span>전역 상태(Context)</span>
+      <span><span class="swatch" style="background:#fee2e2;border:1px solid #b91c1c;"></span>API 모듈</span>
+      <span><span class="swatch" style="background:#f1f5f9;border:1px dashed #64748b;"></span>타입 정의</span>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>② 상태 소유권 &amp; 흐름</h2>
+    <p class="desc">
+      "서버 상태는 Context, UI-only 상태는 지역 state" 원칙에 따라 상태가 어디서 소유되고
+      어떤 경로로 컴포넌트에 전달되는지 표현합니다.
+    </p>
+    <div class="diagram-wrap">
+      <pre class="mermaid">
+flowchart LR
+    db[("db.json<br/>(json-server)")]
+
+    subgraph SRV["서버 상태 — NotesContext"]
+        notesState["notes / loading / error"]
+    end
+
+    subgraph UIAPP["UI 상태 — App (지역 state)"]
+        selected["selectedNoteId"]
+        creating["isCreating"]
+    end
+
+    subgraph UIEDIT["UI 상태 — NoteEditor (지역 state)"]
+        form["title / content / saving"]
+    end
+
+    NoteListC["NoteList"]
+    NoteEditorC["NoteEditor"]
+
+    db <-- "fetchNotes / createNote /<br/>updateNote / deleteNote" --> notesState
+    notesState -- "useNotes()" --> NoteListC
+    notesState -- "useNotes()" --> NoteEditorC
+
+    selected -- "props" --> NoteListC
+    selected -- "props" --> NoteEditorC
+    creating -- "props" --> NoteEditorC
+
+    NoteEditorC --> form
+    form -- "저장 시 createNote/updateNote 호출" --> notesState
+
+    classDef srv fill:#fef3c7,stroke:#b45309,color:#451a03;
+    classDef ui fill:#dbeafe,stroke:#1d4ed8,color:#1e3a8a;
+    classDef comp fill:#dcfce7,stroke:#15803d,color:#052e16;
+    classDef store fill:#fee2e2,stroke:#b91c1c,color:#450a0a;
+
+    class notesState srv;
+    class selected,creating,form ui;
+    class NoteListC,NoteEditorC comp;
+    class db store;
+      </pre>
+    </div>
+    <div class="legend">
+      <span><span class="swatch" style="background:#fee2e2;border:1px solid #b91c1c;"></span>실제 데이터 저장소</span>
+      <span><span class="swatch" style="background:#fef3c7;border:1px solid #b45309;"></span>서버 상태(Context)</span>
+      <span><span class="swatch" style="background:#dbeafe;border:1px solid #1d4ed8;"></span>UI 전용 로컬 상태</span>
+      <span><span class="swatch" style="background:#dcfce7;border:1px solid #15803d;"></span>이를 소비하는 컴포넌트</span>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>③ 저장 동작 시퀀스 (예: 노트 저장)</h2>
+    <p class="desc">
+      <code>NoteEditor.handleSave</code>가 호출된 시점부터 화면이 갱신되기까지의 실제 흐름입니다.
+      낙관적 업데이트 없이 서버 응답을 받은 뒤에만 로컬 상태를 갱신합니다.
+    </p>
+    <div class="diagram-wrap">
+      <pre class="mermaid">
+sequenceDiagram
+    participant U as 사용자
+    participant NE as NoteEditor
+    participant CTX as NotesContext
+    participant API as api/notes.ts
+    participant DB as json-server(db.json)
+
+    U->>NE: 제목/내용 입력 후 저장 클릭
+    NE->>NE: 제목 검증
+    alt 제목이 비어있음
+        NE->>NE: console.error() 후 중단
+    else 검증 통과
+        NE->>CTX: createNote(title, content) 또는<br/>updateNote(id, updates)
+        CTX->>API: createNote() / updateNote()
+        API->>DB: POST /notes 또는 PATCH /notes/:id
+        DB-->>API: 저장된 note 응답
+        API-->>CTX: note 반환
+        CTX->>CTX: setNotes()로 로컬 상태 갱신<br/>(서버 응답 기반, 낙관적 업데이트 아님)
+        CTX-->>NE: Promise resolve
+        NE->>NE: onDone() 호출
+        CTX-->>NE: 재렌더링 (최신 notes 반영)
+    end
+      </pre>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <code>src/</code> 디렉토리 정적 분석 기반으로 생성됨 · Mermaid로 렌더링
+</footer>
+
+<script>
+  mermaid.initialize({ startOnLoad: true, theme: 'default', securityLevel: 'loose' });
+</script>
+
+</body>
+</html>

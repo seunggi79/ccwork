@@ -31,6 +31,7 @@ npm run test:watch         # vitest 워치 모드
 ## 아키텍처
 
 ### 데이터 흐름
+
 ```
 db.json (json-server, :3001) ⇄ src/api/notes.ts (fetch 래퍼) ⇄ NotesContext ⇄ 컴포넌트 트리
 ```
@@ -47,6 +48,7 @@ db.json (json-server, :3001) ⇄ src/api/notes.ts (fetch 래퍼) ⇄ NotesContex
   노트가 무엇인가"는 UI 상태, "노트 데이터 자체"는 서버 상태로 역할이 분리되어 있다.
 
 ### 컴포넌트 구조
+
 - `Layout`: 헤더 + 사이드바(`sidebar` prop) + 메인(`main` prop) 뼈대만 담당하는 슬롯 컴포넌트.
 - `NoteList` → `NoteItem`: 목록/개별 항목. 로딩·에러·빈 상태를 `NoteList`에서 분기 처리.
 - `NoteEditor`: `selectedNoteId`/`isCreating` 두 플래그로 "미선택/생성/편집" 3가지 모드를
@@ -54,6 +56,7 @@ db.json (json-server, :3001) ⇄ src/api/notes.ts (fetch 래퍼) ⇄ NotesContex
   (`react-hooks/exhaustive-deps` 의도적으로 비활성화됨).
 
 ### 스타일링
+
 - Tailwind CSS v4 (`@tailwindcss/vite` 플러그인, `@import "tailwindcss"` 방식 — `tailwind.config.js` 없음).
 - 디자인 토큰은 `src/index.css`의 `@theme` 블록에서 CSS 변수로 정의(`--color-*`,
   `--font-*`, `--radius`). 새 색상/폰트를 추가할 때는 여기에 토큰을 추가하고 `bg-foreground`,
@@ -62,8 +65,9 @@ db.json (json-server, :3001) ⇄ src/api/notes.ts (fetch 래퍼) ⇄ NotesContex
 ## 구현 패턴
 
 ### 컴포넌트
-- 모든 컴포넌트는 `export function ComponentName(...)` **named export**로 선언한다
-  (`App.tsx`만 예외 — 아래 일관성 문제 참고).
+
+- 모든 컴포넌트는 `export function ComponentName(...)` **named export**로 선언한다.
+  `export default`는 예외 없이 금지한다.
 - Props는 컴포넌트 바로 위에 `interface ComponentNameProps { ... }`로 선언하고 함수
   시그니처에서 구조 분해한다 (`LayoutProps`, `NoteEditorProps`, `NoteItemProps`,
   `NoteListProps`).
@@ -79,6 +83,7 @@ db.json (json-server, :3001) ⇄ src/api/notes.ts (fetch 래퍼) ⇄ NotesContex
   `console.error()`로만 남긴다.
 
 ### 상태 관리
+
 - 서버에서 온 데이터(`notes`)와 그 CRUD 동작은 전부 `NotesContext` 한 곳에만 존재하고,
   컴포넌트는 `useNotes()` 훅으로만 접근한다 — props drilling이나 로컬 복사본을 만들지 않는다.
 - 화면에만 의미 있는 상태(어떤 노트를 선택했는지, 생성 모드인지, 저장 중인지)는 Context에
@@ -92,6 +97,7 @@ db.json (json-server, :3001) ⇄ src/api/notes.ts (fetch 래퍼) ⇄ NotesContex
   로컬 상태는 건드리지 않고 에러를 호출부로 던진다.
 
 ### API 호출
+
 - 모든 HTTP 요청은 `src/api/notes.ts`에 모아두고, 컴포넌트나 Context에서 `fetch`를 직접
   호출하지 않는다.
 - 함수는 `res.ok`를 확인해 실패 시 `throw new Error('Failed to ...')`로 던지고, 성공 시
@@ -102,6 +108,7 @@ db.json (json-server, :3001) ⇄ src/api/notes.ts (fetch 래퍼) ⇄ NotesContex
   `new Date().toISOString()`으로 생성해 요청 본문에 포함시킨다.
 
 ### 네이밍
+
 - 컴포넌트 파일/식별자: PascalCase (`NoteItem`, `NoteEditor`, `NotesContext`).
 - 함수/변수/훅: camelCase (`fetchNotes`, `useNotes`, `selectedNoteId`).
 - Boolean 상태·prop은 원칙적으로 `is` 접두사를 사용한다 (`isCreating`, `isSelected`) —
@@ -114,8 +121,10 @@ db.json (json-server, :3001) ⇄ src/api/notes.ts (fetch 래퍼) ⇄ NotesContex
 코드베이스를 훑으며 규칙에서 벗어난 부분들. 새 코드를 작성할 때 어느 쪽을 따를지 판단이
 필요하면 아래를 참고하고, 가능하면 기존 다수 패턴(위 "구현 패턴" 규칙) 쪽으로 맞출 것.
 
-- **export 방식 불일치**: `App.tsx`만 `export default App`을 쓰고, 나머지 컴포넌트
-  (`Layout`, `NoteList`, `NoteItem`, `NoteEditor`)는 전부 named export다.
+- **export 방식 불일치 (규칙 위반, 수정 필요)**: `App.tsx`만 `export default App`을 쓰고,
+  나머지 컴포넌트(`Layout`, `NoteList`, `NoteItem`, `NoteEditor`)는 전부 named export다.
+  위 "컴포넌트" 규칙상 named export가 예외 없이 강제되므로, `App.tsx`를 건드릴 일이 있으면
+  `export function App(...)` + `import { App } from './App'`로 맞출 것.
 - **boolean 네이밍 불일치**: `isCreating`(App), `isSelected`(NoteItem/NoteList)는 `is`
   접두사를 쓰지만, 같은 성격의 `loading`(NotesContext), `saving`(NoteEditor)은 접두사가
   없다.
@@ -137,3 +146,12 @@ db.json (json-server, :3001) ⇄ src/api/notes.ts (fetch 래퍼) ⇄ NotesContex
   있으면 빌드(`tsc`)가 실패한다.
 - UI 텍스트, 주석, 커밋 메시지 등은 한국어로 작성되어 있음 — 새로 추가하는 사용자 노출
   텍스트와 주석도 한국어 관례를 따를 것.
+
+### 커밋 규칙 (husky + commitlint)
+
+- `git commit` 시 `.husky/pre-commit`(lint-staged: eslint --fix, prettier --write)과
+  `.husky/commit-msg`(commitlint, `commitlint.config.js`)가 자동 실행되며 위반 시 커밋이
+  막힌다.
+- 커밋 메시지 형식: `type: 제목` 한 줄 + 빈 줄 + 본문 최소 1줄 (제목만 있는 커밋은 거부됨).
+- `type`은 `feat`/`fix`/`docs`/`style`/`refactor`/`perf`/`test`/`build`/`ci`/`chore`/`revert`/
+  `init` 중 하나 (`init`은 기존 히스토리 관례를 위한 프로젝트 커스텀 타입).
