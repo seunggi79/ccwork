@@ -107,5 +107,18 @@ export function TagInput({ tags, onAdd }: TagInputProps);
   레벨만 검증되고 실제 UI 렌더링 파이프라인은 미검증"으로 지적된 갭 보완
 - AC 9 (생성 모드에서는 태그 입력창 미노출) → 경계 `NoteEditor`(isCreating 시 TagInput 미렌더링)
 
+## 보안 게이트 결과 (`tdd-security-gate`, 2026-08-12)
+
+- **타입 오류**: `npx tsc --noEmit` — 0건, clean.
+- **`.env` 노출**: 프로젝트에 `.env`/`.env.local`/`.env.example` 파일 없음 — 해당 없음.
+- **의존성 취약점**: `npm audit` — 9건(low 1, high 6, critical 2). 전부 `devDependencies` 트리
+  (`vite`, `concurrently` 및 그 하위 의존성 `postcss`, `js-yaml`, `nanoid`, `ws`, `shell-quote`,
+  `brace-expansion`, `@babel/core`)에만 있고, 런타임 의존성(`react`, `react-dom`)에는 없음 →
+  배포되는 번들에는 포함되지 않아 **"즉시 수정 필요"가 아닌 "권장 수정"**으로 분류. 전부
+  `fixAvailable: true`(`npm audit fix`로 `--force` 없이 해결 가능하나 이번 게이트에서는
+  범위 밖이라 적용하지 않음 — 개발자 판단으로 보류).
+- **결론**: "즉시 수정 필요" 항목 없음 → 이슈 #5(TAG-1) 커밋 게이트 통과. `npm audit fix`
+  적용은 별도 작업으로 남겨둠.
+
 **총 9개 AC 중 9개 모두 시나리오로 커버됨** (AC4/AC5/AC8은 2026-08-12 `ac-verifier` 재검증에서
 발견된 갭을 보완하는 시나리오 3건이 추가되어 부분 충족 → 충족으로 승격 대상).
