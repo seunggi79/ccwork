@@ -18,10 +18,10 @@ jobs:
 
     steps:
       - name: 코드 체크아웃
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Node.js 설정
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           # 프로젝트에 engines/.nvmrc가 없어 로컬 개발 환경(v24)에 맞춘다.
           # Vite 6 / Vitest 3의 지원 범위이기도 하다.
