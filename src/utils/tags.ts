@@ -7,3 +7,7 @@ export function addTag(tags: string[], input: string): string[] {
 
   return [...tags, trimmed];
 }
+
+export function removeTag(tags: string[], tagToRemove: string): string[] {
+  return tags.filter((tag) => tag !== tagToRemove);
+}

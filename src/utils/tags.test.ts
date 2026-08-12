@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { addTag } from './tags';
+import { addTag, removeTag } from './tags';
 
 describe('addTag', () => {
   it('should append the trimmed input as a new tag when input is a new, non-duplicate value', () => {
@@ -37,5 +37,23 @@ describe('addTag', () => {
       tags = addTag(tags, `tag-${i}`);
     }
     expect(tags).toHaveLength(20);
+  });
+});
+
+describe('removeTag', () => {
+  it('should remove the matching tag and return a new array containing the remaining tags when the tag exists', () => {
+    expect(removeTag(['react', 'todo'], 'react')).toEqual(['todo']);
+  });
+
+  it('should return an array with the same tags (no removal) when tagToRemove does not match any existing tag', () => {
+    expect(removeTag(['react'], 'urgent')).toEqual(['react']);
+  });
+
+  it('should not remove a tag when tagToRemove differs from it only in case', () => {
+    expect(removeTag(['React'], 'react')).toEqual(['React']);
+  });
+
+  it('should return an empty array when removing the only remaining tag', () => {
+    expect(removeTag(['react'], 'react')).toEqual([]);
   });
 });
