@@ -62,23 +62,26 @@ export function TagInput({ tags, onAdd }: TagInputProps);
 
 ### 정상
 
-- [정상] addTag — should append the trimmed input as a new tag when input is a new, non-duplicate value
-- [정상] addTag — should keep existing tags unchanged and append the new tag when adding a second distinct tag
-- [정상] TagInput — should render one chip per tag in the tags prop
-- [정상] TagInput — should call onAdd with the current input value and clear the input field when Enter is pressed
-- [정상] NoteEditor — should call updateNote with the previous tags plus the newly added tag when Save is clicked
+- [x] [정상] addTag — should append the trimmed input as a new tag when input is a new, non-duplicate value
+- [x] [정상] addTag — should keep existing tags unchanged and append the new tag when adding a second distinct tag
+- [x] [정상] TagInput — should render one chip per tag in the tags prop
+- [x] [정상] TagInput — should call onAdd with the current input value and clear the input field when Enter is pressed
+- [x] [정상] NoteEditor — should call updateNote with the previous tags plus the newly added tag when Save is clicked
+- [x] [정상] NoteEditor — should keep the newly added tag chip visible in the UI after Save succeeds
 
 ### 경계
 
-- [경계] addTag — should silently return the tags array unchanged (no error) when input is an empty string
-- [경계] addTag — should silently return the tags array unchanged (no error) when input is only whitespace
-- [경계] addTag — should return the tags array unchanged when input matches an existing tag ignoring case and surrounding whitespace
-- [경계] addTag — should preserve the original casing of the previously-added tag when a case-different duplicate input is rejected
-- [경계] addTag — should support accumulating at least 20 distinct tags without any artificial limit
-- [경계] NoteEditor — should not call updateNote or createNote while a tag has been added locally but Save has not been clicked yet
-- [경계] NoteEditor — should populate the tags state from the selected note's existing tags when opening an existing note for editing
-- [경계] NoteEditor — should restore the tags state from the server-persisted note (discarding any unsaved addition) when the note is reselected after Cancel was clicked without saving
-- [경계] NoteEditor — should not render TagInput when isCreating is true
+- [x] [경계] addTag — should silently return the tags array unchanged (no error) when input is an empty string
+- [x] [경계] addTag — should silently return the tags array unchanged (no error) when input is only whitespace
+- [x] [경계] addTag — should return the tags array unchanged when input matches an existing tag ignoring case and surrounding whitespace
+- [x] [경계] addTag — should preserve the original casing of the previously-added tag when a case-different duplicate input is rejected
+- [x] [경계] addTag — should support accumulating at least 20 distinct tags without any artificial limit
+- [x] [경계] NoteEditor — should not call updateNote or createNote while a tag has been added locally but Save has not been clicked yet
+- [x] [경계] NoteEditor — should populate the tags state from the selected note's existing tags when opening an existing note for editing
+- [x] [경계] NoteEditor — should restore the tags state from the server-persisted note (discarding any unsaved addition) when the note is reselected after Cancel was clicked without saving
+- [x] [경계] NoteEditor — should not render TagInput when isCreating is true
+- [x] [경계] NoteEditor — should not call updateNote when Cancel is clicked after a tag has been added locally
+- [x] [경계] NoteEditor — should render 20 tag chips when 20 distinct tags are added one by one via the tag input
 
 ### 예외
 
@@ -91,11 +94,18 @@ export function TagInput({ tags, onAdd }: TagInputProps);
   정상 `TagInput`(chip 렌더링, onAdd 호출/입력창 초기화)
 - AC 2 (기존 `study` + 신규 `urgent` → 둘 다 유지) → 정상 `addTag`(기존 유지 + append)
 - AC 3 (저장 전에는 API 호출 없음) → 경계 `NoteEditor`(저장 전 API 미호출)
-- AC 4 (저장 시 `updateNote`에 태그 반영) → 정상 `NoteEditor`(updateNote 호출)
-- AC 5 (취소 후 재열람 시 추가한 태그 사라짐) → 경계 `NoteEditor`(재선택 시 서버 상태로 복원)
+- AC 4 (저장 시 `updateNote`에 태그 반영) → 정상 `NoteEditor`(updateNote 호출) + 정상
+  `NoteEditor`(저장 후 화면에 태그 유지) — 후자는 `ac-verifier` 재검증에서 "호출 인자는
+  검증되지만 저장 후 UI 반영은 미검증"으로 지적된 갭 보완
+- AC 5 (취소 후 재열람 시 추가한 태그 사라짐) → 경계 `NoteEditor`(재선택 시 서버 상태로 복원) +
+  경계 `NoteEditor`(취소 클릭 시 updateNote 미호출) — 후자는 `ac-verifier` 재검증에서 "재선택
+  시뮬레이션만 있고 실제 취소 버튼 클릭 경로는 미검증"으로 지적된 갭 보완
 - AC 6 (대소문자/공백만 다른 중복 무시) → 경계 `addTag`(대소문자/공백 무시 중복 판단)
 - AC 7 (빈/공백 입력 무시, 에러 없음) → 경계 `addTag`(빈 문자열/공백 입력 무시)
-- AC 8 (태그 20개 연속 추가, 제한 없음) → 경계 `addTag`(20개 이상 누적 지원)
+- AC 8 (태그 20개 연속 추가, 제한 없음) → 경계 `addTag`(20개 이상 누적 지원) + 경계
+  `NoteEditor`(실제 입력 20회로 20개 칩 렌더링) — 후자는 `ac-verifier` 재검증에서 "순수 함수
+  레벨만 검증되고 실제 UI 렌더링 파이프라인은 미검증"으로 지적된 갭 보완
 - AC 9 (생성 모드에서는 태그 입력창 미노출) → 경계 `NoteEditor`(isCreating 시 TagInput 미렌더링)
 
-**총 9개 AC 중 9개 모두 시나리오로 커버됨.**
+**총 9개 AC 중 9개 모두 시나리오로 커버됨** (AC4/AC5/AC8은 2026-08-12 `ac-verifier` 재검증에서
+발견된 갭을 보완하는 시나리오 3건이 추가되어 부분 충족 → 충족으로 승격 대상).

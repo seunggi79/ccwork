@@ -42,6 +42,7 @@ async function renderEditor(props: {
 
 describe('NoteEditor', () => {
   beforeEach(() => {
+    vi.clearAllMocks();
     vi.mocked(api.fetchNotes).mockResolvedValue([existingNote]);
     vi.mocked(api.updateNote).mockResolvedValue(existingNote);
     vi.mocked(api.createNote).mockResolvedValue(existingNote);
@@ -64,12 +65,38 @@ describe('NoteEditor', () => {
     });
   });
 
+  it('should keep the newly added tag chip visible in the UI after Save succeeds', async () => {
+    await renderEditor({ selectedNoteId: '1', isCreating: false, onDone: () => {} });
+    await screen.findByDisplayValue('기존 노트');
+
+    const tagInput = screen.getAllByRole('textbox')[2];
+    await userEvent.type(tagInput, 'todo{enter}');
+    await userEvent.click(screen.getByRole('button', { name: '저장' }));
+
+    await waitFor(() => {
+      expect(api.updateNote).toHaveBeenCalled();
+    });
+    expect(screen.getByText('todo')).toBeInTheDocument();
+  });
+
   it('should not call updateNote or createNote while a tag has been added locally but Save has not been clicked yet', async () => {
     await renderEditor({ selectedNoteId: '1', isCreating: false, onDone: () => {} });
     await screen.findByDisplayValue('기존 노트');
 
     const tagInput = screen.getAllByRole('textbox')[2];
     await userEvent.type(tagInput, 'todo{enter}');
+
+    expect(api.updateNote).not.toHaveBeenCalled();
+    expect(api.createNote).not.toHaveBeenCalled();
+  });
+
+  it('should not call updateNote when Cancel is clicked after a tag has been added locally', async () => {
+    await renderEditor({ selectedNoteId: '1', isCreating: false, onDone: () => {} });
+    await screen.findByDisplayValue('기존 노트');
+
+    const tagInput = screen.getAllByRole('textbox')[2];
+    await userEvent.type(tagInput, 'urgent{enter}');
+    await userEvent.click(screen.getByRole('button', { name: '취소' }));
 
     expect(api.updateNote).not.toHaveBeenCalled();
     expect(api.createNote).not.toHaveBeenCalled();
@@ -104,6 +131,18 @@ describe('NoteEditor', () => {
     await screen.findByDisplayValue('기존 노트');
     expect(screen.queryByText('urgent')).not.toBeInTheDocument();
     expect(await screen.findByText('study')).toBeInTheDocument();
+  });
+
+  it('should render 20 tag chips when 20 distinct tags are added one by one via the tag input', async () => {
+    await renderEditor({ selectedNoteId: '1', isCreating: false, onDone: () => {} });
+    await screen.findByDisplayValue('기존 노트');
+
+    for (let i = 0; i < 20; i++) {
+      const tagInput = screen.getAllByRole('textbox')[2];
+      await userEvent.type(tagInput, `tag-${i}{enter}`);
+    }
+
+    expect(screen.getAllByText(/^tag-\d+$/)).toHaveLength(20);
   });
 
   it('should not render TagInput when isCreating is true', async () => {
