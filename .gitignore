@@ -13,6 +13,12 @@ dist/
 dist-ssr/
 coverage/
 
+# Playwright
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+
 # Local env
 .env
 .env.local
