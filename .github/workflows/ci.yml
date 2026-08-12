@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+
+# 같은 PR에 새 커밋이 push되면 진행 중이던 이전 실행을 취소한다.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 코드 체크아웃
+        uses: actions/checkout@v4
+
+      - name: Node.js 설정
+        uses: actions/setup-node@v4
+        with:
+          # 프로젝트에 engines/.nvmrc가 없어 로컬 개발 환경(v24)에 맞춘다.
+          # Vite 6 / Vitest 3의 지원 범위이기도 하다.
+          node-version: '24'
+          cache: 'npm'
+
+      - name: 의존성 설치
+        run: npm ci
+
+      # npm run lint는 `eslint . --fix`라 파일을 고쳐버린다. CI에서는 검사만 해야
+      # 위반이 자동 수정되어 조용히 통과하는 일이 없으므로 --fix 없이 실행한다.
+      - name: Lint
+        run: npx eslint .
+
+      - name: 타입 체크
+        run: npx tsc --noEmit
+
+      # --omit=dev로 실제 배포되는 의존성만 검사한다. 빌드/테스트 도구(vite, vitest 등)의
+      # 취약점은 번들에 포함되지 않아 사용자에게 노출되지 않는데, 이것까지 차단 기준에 넣으면
+      # 제품과 무관한 이유로 모든 PR이 막힌다. dev 취약점은 npm audit으로 별도 관리한다.
+      - name: 의존성 취약점 점검
+        run: npm audit --omit=dev --audit-level=moderate
+
+      - name: 단위/컴포넌트 테스트
+        run: npm test
