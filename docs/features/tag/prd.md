@@ -148,3 +148,53 @@
 | 편집 모드   | `NoteEditor`가 특정 `selectedNoteId`를 가리킬 때의 상태. 기존 노트의 필드(제목/내용/태그)를 수정하는 화면.          |
 | 저장        | `NoteEditor`의 "저장" 버튼 클릭 시 `createNote`/`updateNote`를 호출해 로컬에 반영된 태그 변경을 서버로 보내는 동작. |
 | 취소        | `NoteEditor`의 "취소" 버튼 클릭 시 로컬에만 있던 태그(및 제목/내용) 변경 사항을 폐기하고 편집을 종료하는 동작.      |
+
+## E2E 커버리지
+
+- 스토리 1 (태그 자유 추가) → `e2e/tag.spec.ts`: `should keep the newly added tag chip visible
+after saving and reloading the page` (새로고침 후에도 저장된 태그가 남아있는지까지 함께
+  검증 — Vitest는 `api/notes.ts`를 모킹하므로 실제 HTTP 왕복 + `db.json` 영속화는 확인 불가)
+- 스토리 2 (태그 개별 삭제) → `e2e/tag.spec.ts`: `should not display the removed tag after
+saving and reloading the page` (삭제 후 저장 → 새로고침까지의 전체 스택 검증)
+- 스토리 3 (태그 목록 조회) → `e2e/tag.spec.ts`: `should display an existing note tags when
+opening it from the sidebar`, `should show the correct tags after switching from one note to
+another` (근거: 이슈 #7은 아직 열려 있으나 TAG-1(#5) 구현에 포함된 `NoteEditor`의 폼 동기화
+  `useEffect`(`setTags(selectedNote?.tags ?? [])`)로 실제로는 이미 동작함 — 이슈 상태와 코드
+  불일치. 두 번째 시나리오인 노트 간 전환 동기화는 기존 Vitest(`NoteEditor.test.tsx`)가 단일
+  노트만 렌더링해 다루지 않던 흐름이라 새로 추가함)
+- 스토리 4 (저장 전 미반영 / 취소 시 되돌리기) → `e2e/tag.spec.ts`: `should discard the
+unsaved tag change when Cancel is clicked and the note is reopened after navigating away`
+  (Vitest는 `rerender`로 `selectedNoteId`를 수동으로 바꿔가며 "취소 후 재선택"을
+  시뮬레이션하지만, 실제 `App.tsx`의 `handleDone`은 취소 시 `selectedNoteId`를 초기화하지
+  않는다 — 이 E2E는 실제 사이드바 클릭으로 다른 노트를 거쳐 돌아오는 진짜 네비게이션 경로로
+  같은 결과를 재확인한다)
+- 스토리 5 (대소문자/공백 중복 방지) → 제외: `src/utils/tags.test.ts`(`addTag` 순수 함수)와
+  `NoteEditor.test.tsx`가 이미 충분히 커버하는 입력값 경계 케이스라 E2E로 중복 검증하지 않음
+- 스토리 6 (생성 시 태그 동시 저장) → 제외: TAG-4(#8) 미구현. `NoteEditor.tsx`가 생성 모드
+  (`isCreating`)에서는 `TagInput`을 렌더링하지 않아(`{!isCreating && <TagInput .../>}`),
+  생성 화면에 태그 입력창 자체가 아직 노출되지 않는다
+
+### 검증 상태 (2026-08-12)
+
+- 6개 사용자 스토리 중 5개 구현 확인 → 그중 4개를 E2E 5개 시나리오로 커버(스토리 5는 단위
+  테스트 중복이라 의도적 제외).
+- 실행 결과: `npm run test:e2e` 기준 **chromium·firefox·webkit 3개 브라우저 전부 통과**
+  (`e2e/app.spec.ts` 1개 포함 18/18). 초기에는 WSL에 WebKit 구동용 시스템 라이브러리
+  (`libgtk-4`, `libgraphene`, `libenchant-2`, `libflite*` 등)가 없어 webkit만 기동 실패했으나,
+  `sudo npx playwright install-deps webkit`으로 설치해 해결했다 — 브라우저를
+  `--project=chromium`처럼 좁혀 실행할 이유는 더 이상 없다.
+- 테스트 데이터는 `e2e/support/fixtures.ts`의 `notesApi`가 생성분을 전부 자동 삭제하므로
+  실행 후 `db.json`은 원상 복구된다(검증 완료: 잔여 0건).
+
+### 알려진 갭 / 미채택 시나리오
+
+- **"태그 0개로 저장" 전체 스택 경로**: 단위 테스트는 `updateNote(id, { tags: [] })` 호출
+  인자까지만 확인하고, 빈 배열이 실제로 `db.json`에 저장·재조회되는지는 검증하지 않는다.
+  E2E로 옮길 가치가 있는 후보로 식별했으나 이번 회차에서는 추가하지 않기로 결정했다.
+- **간헐적 실패(저빈도)**: chromium·firefox를 동시에 돌리는 조건에서 firefox 쪽
+  `should keep the newly added tag chip visible...` 1건이 한 차례 실패한 적이 있다(편집 화면이
+  닫힌 상태로 관측). 이후 동일 조건 5회(테스트 50건)와 firefox 단독 6회에서 재현되지 않았다.
+  원인으로 의심했던 "`db.json` 쓰기로 인한 Vite 전체 새로고침"은 `vite.config.ts`의
+  `server.watch.ignored` 설정으로 이미 차단돼 있음을 실측(40회 쓰기 → 리로드 0건)으로
+  확인했으므로 그 경로는 아니다. 두 브라우저 프로젝트가 하나의 `db.json`을 공유하는 구조에서
+  오는 드문 레이스로 보고 남겨둔다 — 재발 시 단언을 완화하지 말고 이 항목을 갱신할 것.
