@@ -27,6 +27,17 @@
       "createdAt": "2026-03-23T13:57:30.308Z",
       "updatedAt": "2026-03-23T13:57:30.308Z",
       "id": "dP_NPYuHV94"
+    },
+    {
+      "title": "운동",
+      "content": "운동",
+      "tags": [
+        "운동",
+        "좋아"
+      ],
+      "createdAt": "2026-08-12T06:28:23.679Z",
+      "updatedAt": "2026-08-12T06:30:16.290Z",
+      "id": "raFD4FLAZsk"
     }
   ],
   "$schema": "./node_modules/json-server/schema.json"

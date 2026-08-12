@@ -18,15 +18,67 @@ npm run build          # tsc 타입체크 후 vite build
 npm run preview        # 빌드 결과 미리보기
 npm run lint            # eslint --fix
 npm run format           # prettier --write
-npm test                  # vitest run (단발 실행)
+npm test                  # vitest run (단위/컴포넌트 테스트, 단발 실행)
 npm run test:watch         # vitest 워치 모드
+npm run test:coverage       # vitest + v8 커버리지
+npm run test:e2e             # playwright test (chromium/firefox/webkit 전체)
+npm run test:e2e:ui           # playwright UI 모드 (인터랙티브 디버깅)
 ```
 
 - 단일 테스트 파일 실행: `npx vitest run <path>` (예: `npx vitest run src/components/NoteItem.test.tsx`)
-- 현재 테스트 파일은 존재하지 않지만 vitest + jsdom + Testing Library 설정(`vite.config.ts`,
-  `src/test-setup.ts`)은 갖춰져 있음.
+- 단일 E2E 파일 실행: `npx playwright test e2e/tag.spec.ts`
+- **테스트가 2계층이다.** `src/` 아래 `*.test.ts(x)`는 Vitest(jsdom, `api/notes.ts` 모킹)로
+  도는 단위/컴포넌트 테스트고, `e2e/` 아래 `*.spec.ts`는 Playwright로 실제 브라우저 +
+  실제 json-server를 상대로 도는 E2E다. 둘은 실행기가 다르므로 서로의 파일을 섞어 실행하면
+  안 된다 (아래 "테스트 설정 메모" 참고).
 - 프론트엔드만 실행할 경우 `npm run dev`로 API 서버까지 함께 켜지 않으면 노트 목록 fetch가
-  실패한다 (아래 아키텍처 참고).
+  실패한다 (아래 아키텍처 참고). E2E는 `playwright.config.ts`의 `webServer`가 `npm run dev`를
+  자동으로 띄우므로 따로 켜둘 필요가 없다.
+
+## TDD 이슈 사이클
+
+GitHub 이슈 하나를 개발할 때는 아래 순서를 따른다. 각 단계 사이에는 사람 승인 게이트가
+있다 — **자동으로 다음 단계로 넘어가지 않고, 한 단계가 끝나면 다음 단계를 제안한 뒤 승인을
+기다린다.**
+
+1. `/test-scenarios {N}` (skill) — 함수 시그니처/Props 타입을 확정하고, 그 시그니처를
+   근거로 정상/경계/예외 테스트 시나리오를 도출해 이슈의 Acceptance Criteria와 전부
+   대조한다. `docs/features/{name}/issue-{N}.md`에 기록. [GATE] 시그니처 승인, [GATE] 시나리오
+   승인.
+2. `/tdd-red {N}` (skill) — 승인된 시나리오를 하나씩 실패하는 Vitest 테스트로 옮긴다.
+   `src/`의 구현 코드는 건드리지 않는다.
+3. `/tdd-green {N}` (skill) — 실패 테스트를 하나씩 최소 구현으로 통과시킨다. 테스트가
+   요구하지 않는 기능은 추가하지 않는다.
+4. `ac-verifier` (agent) — **테스트 통과가 곧 AC 충족을 의미하지 않는다.** AC 문장이 요구하는
+   의도가 코드/테스트에 실제로 반영됐는지 독립적으로 검증한다. 갭이 발견되면 그 갭을
+   보완하는 시나리오를 추가해 1~3단계를 다시 돈다(주로 `/test-scenarios`부터 짧게 재진입).
+5. `/tdd-refactor {N}` (skill) — 테스트가 전부 통과하는 상태를 유지하면서 구조만 개선한다.
+   변경 하나마다 즉시 재검증하고, 테스트가 깨지면 그 변경만 즉시 롤백한다.
+6. `/tdd-security-gate {N}` (skill) — 타입 오류(`tsc --noEmit`)·의존성 취약점(`npm
+audit`)·`.env` 노출을 점검해 즉시 수정 필요/권장 수정/무시 가능으로 분류한다. (전역
+   `/security-review`는 SQLi/XSS 등 더 넓은 범위의 일반 보안 리뷰이며 이 사이클에서 쓰는
+   것과 다르다 — 이슈 커밋 전 점검에는 항상 `/tdd-security-gate`를 쓴다.)
+7. 커밋 → push → `gh pr create --base feature/{spec-branch}`(예: `feature/tag-spec`처럼 해당
+   기능의 스펙 브랜치로, `main`이 아님) → 머지(일반 머지, squash 아님) → `gh issue close {N}`.
+
+이슈 간 의존성이 있으면(예: TAG-2가 TAG-1의 `TagInput`을 재사용), 새 이슈용 브랜치는 `main`이
+아니라 **선행 이슈가 머지된 feature 브랜치**(예: `feature/tag-spec`)에서 분기한다.
+
+### 기능 단위 마무리 — E2E
+
+위 1~7단계는 **이슈 하나**를 단위로 돈다. 한 기능(PRD)에 속한 이슈들이 전부 머지되면, 마지막에
+`/e2e-write {기능명}` (skill)로 그 기능 전체를 실제 브라우저에서 한 번 검증한다 (예:
+`/e2e-write tag`). 이 스킬은 `docs/features/{name}/prd.md`의 사용자 스토리 중 **실제로 구현된
+것만** 골라 `e2e/{name}.spec.ts`로 옮기고, 결과를 같은 PRD의 "E2E 커버리지" 섹션에 기록한다.
+
+TDD 사이클과 방향이 반대라는 점에 주의한다 — TDD는 **없는 기능**을 위해 실패하는 테스트를 먼저
+쓰지만, E2E는 **이미 머지된 기능**의 회귀 테스트라 처음 실행부터 통과해야 정상이다. 여기서
+실패가 나면 테스트가 잘못됐거나(셀렉터/타이밍) 실제 버그가 있다는 뜻이므로, 단언을 완화해
+통과시키지 않는다.
+
+Vitest가 이미 검증하는 것(입력값 경계, 순수 함수 엣지케이스, mock 호출 인자)은 E2E에서
+중복하지 않는다. E2E에는 단위 테스트가 **구조적으로 할 수 없는 것**만 남긴다 — 새로고침 후에도
+값이 남아있는지(실제 HTTP + `db.json` 영속화), 여러 화면을 넘나드는 흐름.
 
 ## 아키텍처
 
@@ -148,6 +200,36 @@ db.json (json-server, :3001) ⇄ src/api/notes.ts (fetch 래퍼) ⇄ NotesContex
   있으면 빌드(`tsc`)가 실패한다.
 - UI 텍스트, 주석, 커밋 메시지 등은 한국어로 작성되어 있음 — 새로 추가하는 사용자 노출
   텍스트와 주석도 한국어 관례를 따를 것.
+
+### 테스트 설정 메모 (지우면 깨지는 것들)
+
+Vitest와 Playwright를 한 저장소에서 함께 쓰기 위해 들어간 설정들이다. 넷 다 없으면 조용히
+또는 요란하게 깨지므로, "왜 이런 게 있지?" 싶어도 지우기 전에 아래 이유를 확인할 것.
+
+- **Vitest의 E2E 제외** — `vite.config.ts`의 `test.exclude`에 `e2e` 글로브: Vitest는 기본
+  패턴상 `e2e/` 아래 `.spec.ts`도 자기 테스트로 집어삼킨다. 그러면 Playwright의 `test()`를
+  Vitest가 실행하려다 `Playwright Test did not expect test() to be called here`로 `npm test`
+  전체가 실패한다.
+- **Vite 감시에서 `db.json` 제외** — `vite.config.ts`의 `server.watch.ignored`: `db.json`은
+  json-server가 노트를 생성/수정/삭제할 때마다 다시 쓰는 런타임 파일인데, 프로젝트 루트에
+  있어 Vite 개발 서버의 기본 감시 대상에 들어간다. E2E 실행 중 잦은 쓰기가 브라우저 전체
+  새로고침을 유발해 화면의 React 상태(선택된 노트 등)를 날려버리고, E2E가 간헐적으로
+  실패한다. 증상이 "요소는 visible/enabled/stable인데 클릭이 타임아웃"으로 나타나 원인을
+  찾기 매우 어렵다.
+- **react-hooks 규칙을 React 코드로 한정** — `eslint.config.js`에서 `react-hooks`/
+  `react-refresh`를 `src/` 글로브에만 적용: 이 규칙들을 저장소 전체에 걸면 Playwright
+  fixture의 `use(...)` 파라미터를 React 훅 호출로 오인해 `react-hooks/rules-of-hooks` 오탐이
+  난다. React 코드에만 적용하는 게 맞다.
+- **타입 체크 범위에 `e2e` 포함** — `tsconfig.json`의 `include`에 `e2e`와
+  `playwright.config.ts`: 없으면 `e2e/` 아래 코드가 `tsc --noEmit`과 `npm run build`의 타입
+  체크에서 통째로 빠져, E2E 코드의 타입 오류가 조용히 통과된다 (`/tdd-security-gate`의 타입
+  점검도 함께 무력화됨).
+
+E2E는 별도 테스트 DB 없이 **실제 `db.json`을 상대로** 돈다. 대신 `e2e/support/fixtures.ts`의
+`notesApi`가 테스트 중 만든 노트를 성공/실패와 무관하게 전부 삭제하므로 실행 후 `db.json`은
+원상 복구된다. 새 E2E를 쓸 때는 반드시 이 fixture로 데이터를 만들고, UI로 만든 노트는
+`notesApi.track(id)`로 정리 대상에 등록할 것 — 직접 `fetch`로 데이터를 만들면 정리되지 않고
+`db.json`에 쓰레기가 쌓인다.
 
 ### 커밋 규칙 (husky + commitlint)
 

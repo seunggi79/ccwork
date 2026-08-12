@@ -1,0 +1,10 @@
+# json-server가 런타임에 다시 쓰는 데이터 파일.
+# prettier는 tags 배열을 한 줄로 접고 json-server는 여러 줄로 펼치기 때문에, 포맷 대상에
+# 두면 커밋할 때와 앱/E2E를 실행할 때마다 의미 없는 변경이 무한히 오간다.
+db.json
+
+# 빌드/테스트 생성물 (전부 .gitignore 대상)
+dist/
+coverage/
+playwright-report/
+test-results/

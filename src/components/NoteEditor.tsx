@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNotes } from '../context/NotesContext';
+import { addTag, removeTag } from '../utils/tags';
+import { TagInput } from './TagInput';
 
 interface NoteEditorProps {
   selectedNoteId: string | null;
@@ -11,6 +13,7 @@ export function NoteEditor({ selectedNoteId, isCreating, onDone }: NoteEditorPro
   const { notes, createNote, updateNote } = useNotes();
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
+  const [tags, setTags] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
 
   const selectedNote = notes.find((n) => n.id === selectedNoteId);
@@ -20,11 +23,21 @@ export function NoteEditor({ selectedNoteId, isCreating, onDone }: NoteEditorPro
     if (selectedNote) {
       setTitle(selectedNote.title);
       setContent(selectedNote.content);
+      setTags(selectedNote.tags ?? []);
     } else if (isCreating) {
       setTitle('');
       setContent('');
+      setTags([]);
     }
   }, [selectedNoteId, isCreating]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleAddTag = (value: string) => {
+    setTags(addTag(tags, value));
+  };
+
+  const handleRemoveTag = (tag: string) => {
+    setTags(removeTag(tags, tag));
+  };
 
   const handleSave = async () => {
     if (!title.trim()) {
@@ -37,7 +50,7 @@ export function NoteEditor({ selectedNoteId, isCreating, onDone }: NoteEditorPro
       if (isCreating) {
         await createNote(title, content);
       } else if (selectedNoteId) {
-        await updateNote(selectedNoteId, { title, content });
+        await updateNote(selectedNoteId, { title, content, tags });
       }
       onDone();
     } catch (e) {
@@ -83,6 +96,13 @@ export function NoteEditor({ selectedNoteId, isCreating, onDone }: NoteEditorPro
         rows={14}
         className="w-full text-base text-foreground/70 bg-transparent border-none outline-none resize-none placeholder:text-muted-foreground/50 leading-relaxed"
       />
+
+      {/* 태그 입력 (편집 모드에서만) */}
+      {!isCreating && (
+        <div className="mt-6 pt-4 border-t border-border">
+          <TagInput tags={tags} onAdd={handleAddTag} onRemove={handleRemoveTag} />
+        </div>
+      )}
 
       {/* 버튼 영역 */}
       <div className="flex gap-3 mt-6 pt-4 border-t border-border">
