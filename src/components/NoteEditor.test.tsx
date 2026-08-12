@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor, act } from '@testing-library/react';
+import { render, screen, waitFor, act, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { NoteEditor } from './NoteEditor';
 import { NotesProvider } from '../context/NotesContext';
@@ -38,6 +38,13 @@ async function renderEditor(props: {
     </NotesProvider>,
   );
   return utils;
+}
+
+// 태그 칩(텍스트 + 삭제 버튼)이 한 컨테이너 안에 함께 렌더링된다는 구조만 가정하고, 삭제
+// 버튼의 접근성 이름(aria-label 등) 같은 구현 세부사항은 가정하지 않는다.
+async function clickRemoveButtonFor(tag: string) {
+  const chip = screen.getByText(tag).closest('span') as HTMLElement;
+  await userEvent.click(within(chip).getByRole('button'));
 }
 
 describe('NoteEditor', () => {
@@ -143,6 +150,156 @@ describe('NoteEditor', () => {
     }
 
     expect(screen.getAllByText(/^tag-\d+$/)).toHaveLength(20);
+  });
+
+  it('should remove the tag chip from the screen immediately when its delete button is clicked, before Save is clicked', async () => {
+    await renderEditor({ selectedNoteId: '1', isCreating: false, onDone: () => {} });
+    await screen.findByDisplayValue('기존 노트');
+    await screen.findByText('study');
+
+    await clickRemoveButtonFor('study');
+
+    expect(screen.queryByText('study')).not.toBeInTheDocument();
+  });
+
+  it('should remove only the clicked tag chip and keep the other tag chip visible when two tags exist', async () => {
+    const noteWithTwoTags = { ...existingNote, tags: ['react', 'todo'] };
+    vi.mocked(api.fetchNotes).mockResolvedValue([noteWithTwoTags]);
+
+    await renderEditor({ selectedNoteId: '1', isCreating: false, onDone: () => {} });
+    await screen.findByDisplayValue('기존 노트');
+    await screen.findByText('react');
+    await screen.findByText('todo');
+
+    await clickRemoveButtonFor('react');
+
+    expect(screen.queryByText('react')).not.toBeInTheDocument();
+    expect(screen.getByText('todo')).toBeInTheDocument();
+  });
+
+  it('should call updateNote with the tags array excluding the removed tag when Save is clicked after removing a tag', async () => {
+    const noteWithTwoTags = { ...existingNote, tags: ['react', 'todo'] };
+    vi.mocked(api.fetchNotes).mockResolvedValue([noteWithTwoTags]);
+
+    await renderEditor({ selectedNoteId: '1', isCreating: false, onDone: () => {} });
+    await screen.findByDisplayValue('기존 노트');
+    await screen.findByText('react');
+
+    await clickRemoveButtonFor('react');
+    await userEvent.click(screen.getByRole('button', { name: '저장' }));
+
+    await waitFor(() => {
+      expect(api.updateNote).toHaveBeenCalledWith('1', {
+        title: '기존 노트',
+        content: '내용',
+        tags: ['todo'],
+      });
+    });
+  });
+
+  it('should not display the removed tag after Save succeeds while the other remaining tag stays visible', async () => {
+    const noteWithTwoTags = { ...existingNote, tags: ['react', 'todo'] };
+    vi.mocked(api.fetchNotes).mockResolvedValue([noteWithTwoTags]);
+    vi.mocked(api.updateNote).mockResolvedValue({ ...noteWithTwoTags, tags: ['todo'] });
+
+    await renderEditor({ selectedNoteId: '1', isCreating: false, onDone: () => {} });
+    await screen.findByDisplayValue('기존 노트');
+    await screen.findByText('react');
+
+    await clickRemoveButtonFor('react');
+    await userEvent.click(screen.getByRole('button', { name: '저장' }));
+
+    await waitFor(() => {
+      expect(api.updateNote).toHaveBeenCalled();
+    });
+    expect(screen.queryByText('react')).not.toBeInTheDocument();
+    expect(screen.getByText('todo')).toBeInTheDocument();
+  });
+
+  it('should not call updateNote or createNote while a tag has been removed locally but Save has not been clicked yet', async () => {
+    await renderEditor({ selectedNoteId: '1', isCreating: false, onDone: () => {} });
+    await screen.findByDisplayValue('기존 노트');
+    await screen.findByText('study');
+
+    await clickRemoveButtonFor('study');
+
+    expect(api.updateNote).not.toHaveBeenCalled();
+    expect(api.createNote).not.toHaveBeenCalled();
+  });
+
+  it('should restore the removed tag when the note is reselected after the actual Cancel button is clicked without saving', async () => {
+    const utils = await renderEditor({ selectedNoteId: '1', isCreating: false, onDone: () => {} });
+    await screen.findByDisplayValue('기존 노트');
+    await screen.findByText('study');
+
+    await clickRemoveButtonFor('study');
+    expect(screen.queryByText('study')).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: '취소' }));
+    expect(api.updateNote).not.toHaveBeenCalled();
+
+    // 실제 App.tsx는 onDone에서 selectedNoteId를 null로 바꾼 뒤 같은 노트를 다시 선택할 수
+    // 있게 한다 — 이 테스트의 onDone은 no-op이므로 그 흐름을 rerender로 재현한다.
+    utils.rerender(
+      <NotesProvider>
+        <NoteEditor selectedNoteId={null} isCreating={false} onDone={() => {}} />
+      </NotesProvider>,
+    );
+    utils.rerender(
+      <NotesProvider>
+        <NoteEditor selectedNoteId="1" isCreating={false} onDone={() => {}} />
+      </NotesProvider>,
+    );
+
+    await screen.findByDisplayValue('기존 노트');
+    expect(await screen.findByText('study')).toBeInTheDocument();
+  });
+
+  it('should restore both the removed tag and the remaining tag when the note is reselected after the actual Cancel button is clicked, given a note with two tags', async () => {
+    const noteWithTwoTags = { ...existingNote, tags: ['study', 'urgent'] };
+    vi.mocked(api.fetchNotes).mockResolvedValue([noteWithTwoTags]);
+
+    const utils = await renderEditor({ selectedNoteId: '1', isCreating: false, onDone: () => {} });
+    await screen.findByDisplayValue('기존 노트');
+    await screen.findByText('urgent');
+
+    await clickRemoveButtonFor('urgent');
+    expect(screen.queryByText('urgent')).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: '취소' }));
+    expect(api.updateNote).not.toHaveBeenCalled();
+
+    utils.rerender(
+      <NotesProvider>
+        <NoteEditor selectedNoteId={null} isCreating={false} onDone={() => {}} />
+      </NotesProvider>,
+    );
+    utils.rerender(
+      <NotesProvider>
+        <NoteEditor selectedNoteId="1" isCreating={false} onDone={() => {}} />
+      </NotesProvider>,
+    );
+
+    await screen.findByDisplayValue('기존 노트');
+    expect(await screen.findByText('study')).toBeInTheDocument();
+    expect(await screen.findByText('urgent')).toBeInTheDocument();
+  });
+
+  it('should call updateNote with an empty tags array when the only tag is removed and Save is clicked', async () => {
+    await renderEditor({ selectedNoteId: '1', isCreating: false, onDone: () => {} });
+    await screen.findByDisplayValue('기존 노트');
+    await screen.findByText('study');
+
+    await clickRemoveButtonFor('study');
+    await userEvent.click(screen.getByRole('button', { name: '저장' }));
+
+    await waitFor(() => {
+      expect(api.updateNote).toHaveBeenCalledWith('1', {
+        title: '기존 노트',
+        content: '내용',
+        tags: [],
+      });
+    });
   });
 
   it('should not render TagInput when isCreating is true', async () => {

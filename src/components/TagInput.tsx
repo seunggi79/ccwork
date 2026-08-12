@@ -3,9 +3,10 @@ import { useState } from 'react';
 interface TagInputProps {
   tags: string[];
   onAdd: (value: string) => void;
+  onRemove: (tag: string) => void;
 }
 
-export function TagInput({ tags, onAdd }: TagInputProps) {
+export function TagInput({ tags, onAdd, onRemove }: TagInputProps) {
   const [value, setValue] = useState('');
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -18,8 +19,18 @@ export function TagInput({ tags, onAdd }: TagInputProps) {
   return (
     <div className="flex flex-wrap items-center gap-2">
       {tags.map((tag) => (
-        <span key={tag} className="px-2 py-1 text-sm text-foreground bg-muted border border-border">
+        <span
+          key={tag}
+          className="flex items-center gap-1 px-2 py-1 text-sm text-foreground bg-muted border border-border"
+        >
           {tag}
+          <button
+            type="button"
+            onClick={() => onRemove(tag)}
+            className="text-muted-foreground hover:text-destructive transition-colors cursor-pointer"
+          >
+            ×
+          </button>
         </span>
       ))}
       <input

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNotes } from '../context/NotesContext';
-import { addTag } from '../utils/tags';
+import { addTag, removeTag } from '../utils/tags';
 import { TagInput } from './TagInput';
 
 interface NoteEditorProps {
@@ -33,6 +33,10 @@ export function NoteEditor({ selectedNoteId, isCreating, onDone }: NoteEditorPro
 
   const handleAddTag = (value: string) => {
     setTags(addTag(tags, value));
+  };
+
+  const handleRemoveTag = (tag: string) => {
+    setTags(removeTag(tags, tag));
   };
 
   const handleSave = async () => {
@@ -96,7 +100,7 @@ export function NoteEditor({ selectedNoteId, isCreating, onDone }: NoteEditorPro
       {/* 태그 입력 (편집 모드에서만) */}
       {!isCreating && (
         <div className="mt-6 pt-4 border-t border-border">
-          <TagInput tags={tags} onAdd={handleAddTag} />
+          <TagInput tags={tags} onAdd={handleAddTag} onRemove={handleRemoveTag} />
         </div>
       )}
 
