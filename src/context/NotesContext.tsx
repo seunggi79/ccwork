@@ -27,7 +27,7 @@ export function NotesProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const createNote = async (title: string, content: string) => {
-    const newNote = await api.createNote({ title, content });
+    const newNote = await api.createNote({ title, content, tags: [] });
     setNotes((prev) => [...prev, newNote]);
   };
 
