@@ -11,19 +11,7 @@ React 19 + TypeScript + Vite 기반의 노트 앱 실습/강의용 프로젝트.
 
 ## 명령어
 
-```bash
-npm run dev          # Vite(5173) + json-server(3001)를 concurrently로 동시 실행
-npm run server        # json-server만 단독 실행 (db.json 감시)
-npm run build          # tsc 타입체크 후 vite build
-npm run preview        # 빌드 결과 미리보기
-npm run lint            # eslint --fix
-npm run format           # prettier --write
-npm test                  # vitest run (단위/컴포넌트 테스트, 단발 실행)
-npm run test:watch         # vitest 워치 모드
-npm run test:coverage       # vitest + v8 커버리지
-npm run test:e2e             # playwright test (chromium/firefox/webkit 전체)
-npm run test:e2e:ui           # playwright UI 모드 (인터랙티브 디버깅)
-```
+`package.json`의 `scripts`에 명령어 목록이 있다 (`npm run dev`가 vite+json-server를 동시 실행).
 
 - 단일 테스트 파일 실행: `npx vitest run <path>` (예: `npx vitest run src/components/NoteItem.test.tsx`)
 - 단일 E2E 파일 실행: `npx playwright test e2e/tag.spec.ts`
@@ -193,9 +181,6 @@ db.json (json-server, :3001) ⇄ src/api/notes.ts (fetch 래퍼) ⇄ NotesContex
 
 ## 코드 스타일 / 설정 메모
 
-- Prettier: 세미콜론 사용, 싱글 쿼트, printWidth 100, trailingComma all (`.prettierrc`).
-- ESLint: `typescript-eslint` recommended + `react-hooks`/`react-refresh` 규칙
-  (`eslint.config.js`). `dist/`는 lint 대상에서 제외.
 - TypeScript strict 모드, `noUnusedLocals`/`noUnusedParameters` 활성화 — 미사용 변수/파라미터가
   있으면 빌드(`tsc`)가 실패한다.
 - UI 텍스트, 주석, 커밋 메시지 등은 한국어로 작성되어 있음 — 새로 추가하는 사용자 노출
